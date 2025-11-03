@@ -5,7 +5,18 @@ pipeline {
     stage('Build JAR') {
       steps {
         container('maven') {
-          sh 'mvn -Dmaven.test.skip=true clean package'
+          retry(2) { // Maven Central 500/네트워크 일시 오류 방지 재시도
+            sh '''
+              mvn -U \
+                  -Dmaven.wagon.http.retryHandler.count=5 \
+                  -Dmaven.wagon.httpconnectionManager.ttl=300 \
+                  -Dmaven.wagon.http.pool=true \
+                  -Dmaven.wagon.rto=60000 \
+                  -Dmaven.wagon.connectTimeout=60000 \
+                  -Dmaven.test.skip=true \
+                  clean package
+            '''
+          }
         }
       }
     }
