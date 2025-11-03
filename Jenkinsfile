@@ -2,7 +2,7 @@ pipeline {
   agent { label 'maven-kaniko' }
 
   environment {
-    IMAGE = "index.docker.io/frog-rammer/hello-spring:1.0.${BUILD_NUMBER}"
+    IMAGE = "index.docker.io/frogrammer123/hello-spring:1.0.${BUILD_NUMBER}"
   }
 
   stages {
