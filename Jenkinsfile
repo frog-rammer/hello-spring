@@ -1,11 +1,19 @@
 pipeline {
   agent { label 'maven-kaniko' }
+  options { timestamps() }
+
+  environment {
+    REGISTRY   = 'index.docker.io'
+    IMAGE      = 'frog-rammer/hello-spring'
+    NAMESPACE  = 'app-spring'
+    DOCKER_DEST = "${REGISTRY}/${IMAGE}:1.0.${BUILD_NUMBER}"
+  }
 
   stages {
     stage('Build JAR') {
       steps {
         container('maven') {
-          retry(2) { // Maven Central 500/네트워크 일시 오류 방지 재시도
+          retry(2) { // Maven Central 500/네트워크 일시 오류 흡수
             sh '''
               mvn -U \
                   -Dmaven.wagon.http.retryHandler.count=5 \
@@ -24,13 +32,15 @@ pipeline {
     stage('Build & Push Docker Image') {
       steps {
         container('kaniko') {
-          sh '''
-            /kaniko/executor \
-              --context=/workspace \
-              --dockerfile=/workspace/Dockerfile \
-              --destination=index.docker.io/frog-rammer/hello-spring:1.0.${BUILD_NUMBER} \
-              --insecure --skip-tls-verify
-          '''
+          retry(2) { // 레지스트리 푸시 일시 실패 대비
+            sh '''
+              /kaniko/executor \
+                --context=/workspace \
+                --dockerfile=/workspace/Dockerfile \
+                --destination="$DOCKER_DEST" \
+                --insecure --skip-tls-verify
+            '''
+          }
         }
       }
     }
@@ -39,11 +49,18 @@ pipeline {
       steps {
         container('kubectl') {
           sh '''
-            kubectl -n app-spring set image deploy/hello-spring app=index.docker.io/frog-rammer/hello-spring:1.0.${BUILD_NUMBER}
-            kubectl -n app-spring rollout status deploy/hello-spring
+            set -euo pipefail
+            kubectl -n "$NAMESPACE" set image deploy/hello-spring app="$DOCKER_DEST"
+            kubectl -n "$NAMESPACE" rollout status deploy/hello-spring --timeout=180s
           '''
         }
       }
+    }
+  }
+
+  post {
+    always {
+      echo "Build URL: ${env.BUILD_URL}"
     }
   }
 }
