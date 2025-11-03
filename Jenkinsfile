@@ -1,28 +1,25 @@
 pipeline {
   agent { label 'maven-kaniko' }
-  options { timestamps() }
 
   environment {
-    REGISTRY   = 'index.docker.io'
-    IMAGE      = 'frog-rammer/hello-spring'
-    NAMESPACE  = 'app-spring'
-    DOCKER_DEST = "${REGISTRY}/${IMAGE}:1.0.${BUILD_NUMBER}"
+    IMAGE = "index.docker.io/frog-rammer/hello-spring:1.0.${BUILD_NUMBER}"
   }
 
   stages {
     stage('Build JAR') {
       steps {
         container('maven') {
-          retry(2) { // Maven Central 500/네트워크 일시 오류 흡수
+          // 네트워크/중앙 저장소 일시 오류 대비 재시도 + 타임아웃 설정
+          retry(2) {
             sh '''
+              echo "[DEBUG] PWD=$(pwd)"
+              echo "[DEBUG] LS (repo root):"
+              ls -la
               mvn -U \
                   -Dmaven.wagon.http.retryHandler.count=5 \
-                  -Dmaven.wagon.httpconnectionManager.ttl=300 \
-                  -Dmaven.wagon.http.pool=true \
                   -Dmaven.wagon.rto=60000 \
                   -Dmaven.wagon.connectTimeout=60000 \
-                  -Dmaven.test.skip=true \
-                  clean package
+                  -Dmaven.test.skip=true clean package
             '''
           }
         }
@@ -32,12 +29,18 @@ pipeline {
     stage('Build & Push Docker Image') {
       steps {
         container('kaniko') {
-          retry(2) { // 레지스트리 푸시 일시 실패 대비
+          // Kaniko가 정확한 경로를 보도록 $WORKSPACE를 명시
+          retry(2) {
             sh '''
+              echo "[DEBUG] Kaniko context check:"
+              echo "WORKSPACE=$WORKSPACE"
+              ls -la "$WORKSPACE"
+              test -f "$WORKSPACE/Dockerfile" || { echo "Dockerfile not found at $WORKSPACE/Dockerfile"; exit 1; }
+
               /kaniko/executor \
-                --context=/workspace \
-                --dockerfile=/workspace/Dockerfile \
-                --destination="$DOCKER_DEST" \
+                --context="$WORKSPACE" \
+                --dockerfile="$WORKSPACE/Dockerfile" \
+                --destination="$IMAGE" \
                 --insecure --skip-tls-verify
             '''
           }
@@ -49,18 +52,11 @@ pipeline {
       steps {
         container('kubectl') {
           sh '''
-            set -euo pipefail
-            kubectl -n "$NAMESPACE" set image deploy/hello-spring app="$DOCKER_DEST"
-            kubectl -n "$NAMESPACE" rollout status deploy/hello-spring --timeout=180s
+            kubectl -n app-spring set image deploy/hello-spring app='$IMAGE'
+            kubectl -n app-spring rollout status deploy/hello-spring
           '''
         }
       }
-    }
-  }
-
-  post {
-    always {
-      echo "Build URL: ${env.BUILD_URL}"
     }
   }
 }
