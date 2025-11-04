@@ -1,6 +1,12 @@
 pipeline {
   agent { label 'maven-kaniko' }
 
+  options {
+    timeout(time: 30, unit: 'MINUTES')     // 전체 파이프라인 상한
+    ansiColor('xterm')                      // 컬러 로그
+    timestamps()                            // 타임스탬프 로그
+  }
+
   environment {
     IMAGE = "index.docker.io/frogrammer123/hello-spring:1.0.${BUILD_NUMBER}"
   }
@@ -43,7 +49,7 @@ pipeline {
                 # writable docker config for kaniko
                 mkdir -p "${DOCKER_CONFIG}"
 
-                # copy readonly secret content if present
+                # copy readonly secret content if present (mounted by K8s pod template)
                 if [ -f /kaniko/.docker/.dockerconfigjson ]; then
                   echo "[DEBUG] Found /kaniko/.docker/.dockerconfigjson -> copying to ${DOCKER_CONFIG}/config.json"
                   cp /kaniko/.docker/.dockerconfigjson "${DOCKER_CONFIG}/config.json"
