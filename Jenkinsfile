@@ -55,7 +55,7 @@ spec:
 
     - name: kubectl
       image: bitnami/kubectl:latest
-      command: ["sleep","365d"]           
+      command: ["tail","-f","/dev/null"]   
       tty: true
       workingDir: /home/jenkins/agent
       volumeMounts:
@@ -125,17 +125,16 @@ spec:
       }
     }
 
-    stage('Sanity: kubectl shell') {
-      options { timeout(time: 1, unit: 'MINUTES') }
-      steps {
-        container('kubectl') {
-          sh '''
-            set -e
-            echo "[PING] kubectl OK"; whoami; pwd; ls -la .
-          '''
-        }
+  stage('Sanity: kubectl shell') {
+  options { timeout(time: 1, unit: 'MINUTES') }
+  steps {
+    container('kubectl') {
+      script {
+        sh 'echo "[PING] kubectl alive $(kubectl version --client=true --short)"'
       }
     }
+  }
+}
 
     stage('Deploy to Kubernetes') {
       options { timeout(time: 5, unit: 'MINUTES') }
