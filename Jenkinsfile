@@ -2,9 +2,9 @@ pipeline {
   agent { label 'maven-kaniko' }
 
   options {
-    timeout(time: 30, unit: 'MINUTES')     // 전체 파이프라인 상한
-    ansiColor('xterm')                      // 컬러 로그
-    timestamps()                            // 타임스탬프 로그
+    timeout(time: 30, unit: 'MINUTES')
+    // ansiColor('xterm')  ← 이 줄 삭제
+    timestamps()
   }
 
   environment {
@@ -12,7 +12,6 @@ pipeline {
   }
 
   stages {
-
     stage('Build JAR') {
       steps {
         container('maven') {
@@ -40,16 +39,13 @@ pipeline {
             retry(2) {
               sh '''
                 set -euo pipefail
-
                 echo "[DEBUG] Kaniko context check:"
                 echo "WORKSPACE=${WORKSPACE}"
                 ls -la "${WORKSPACE}"
                 test -f "${WORKSPACE}/Dockerfile" || { echo "[ERROR] Dockerfile not found at ${WORKSPACE}/Dockerfile"; exit 1; }
 
-                # writable docker config for kaniko
                 mkdir -p "${DOCKER_CONFIG}"
 
-                # copy readonly secret content if present (mounted by K8s pod template)
                 if [ -f /kaniko/.docker/.dockerconfigjson ]; then
                   echo "[DEBUG] Found /kaniko/.docker/.dockerconfigjson -> copying to ${DOCKER_CONFIG}/config.json"
                   cp /kaniko/.docker/.dockerconfigjson "${DOCKER_CONFIG}/config.json"
@@ -69,7 +65,6 @@ pipeline {
       }
     }
 
-    /* ====== 새로 추가: kubectl 컨테이너 진입/쉘 확인 ====== */
     stage('Sanity: kubectl shell') {
       options { timeout(time: 1, unit: 'MINUTES') }
       steps {
@@ -87,7 +82,7 @@ pipeline {
     }
 
     stage('Deploy to Kubernetes') {
-      options { timeout(time: 5, unit: 'MINUTES') }  // 무한대기 방지
+      options { timeout(time: 5, unit: 'MINUTES') }
       steps {
         container('kubectl') {
           sh """
@@ -99,7 +94,6 @@ pipeline {
             kubectl get ns || true
 
             echo "[APPLY] Set image on Deployment"
-            # 컨테이너 이름 'app'이 Deployment 내 컨테이너 이름과 반드시 일치해야 함
             kubectl -n app-spring set image deploy/hello-spring app=${env.IMAGE}
 
             echo "[WAIT] Rollout status (with timeout)"
