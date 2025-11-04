@@ -1,7 +1,7 @@
 pipeline {
   agent {
     kubernetes {
-      label 'maven-kaniko'            // 이 잡 전용 라벨
+      inheritFrom 'maven-kaniko'   // 라벨 대신 이 옵션 사용
       defaultContainer 'maven'
       yaml """
 apiVersion: v1
