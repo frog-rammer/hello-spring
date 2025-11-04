@@ -127,7 +127,7 @@ spec:
     }
 
     stage('Sanity: kubectl shell') {
-      options { timeout(time: 3, unit: 'MINUTES') }   # ⏱ attach 지연 대비
+      options { timeout(time: 3, unit: 'MINUTES') }  
       steps {
         catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
           container('kubectl') {
