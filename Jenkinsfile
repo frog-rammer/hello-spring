@@ -1,7 +1,7 @@
 pipeline {
   agent {
     kubernetes {
-      label 'maven-kaniko'
+      //label 'maven-kaniko'
       defaultContainer 'maven'
       yaml """
 apiVersion: v1
@@ -18,7 +18,7 @@ spec:
     - name: docker-config
       secret:
         secretName: regcred
-        items:                      # <-- .dockerconfigjson -> config.json 로 매핑
+        items:                     
           - key: .dockerconfigjson
             path: config.json
   containers:
@@ -44,18 +44,18 @@ spec:
       tty: true
       env:
         - name: DOCKER_CONFIG
-          value: /kaniko/.docker          # <-- Kaniko 기본 탐색 경로
+          value: /kaniko/.docker       
       workingDir: /home/jenkins/agent
       volumeMounts:
         - name: workspace
           mountPath: /home/jenkins/agent
         - name: docker-config
-          mountPath: /kaniko/.docker      # <-- 디렉터리로 마운트 (config.json 존재)
+          mountPath: /kaniko/.docker      
           readOnly: true
 
     - name: kubectl
       image: bitnami/kubectl:latest
-      command: ["sleep","365d"]           # <-- 쉘 없이 직접 호출
+      command: ["sleep","365d"]           
       tty: true
       workingDir: /home/jenkins/agent
       volumeMounts:
