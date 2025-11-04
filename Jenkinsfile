@@ -53,7 +53,7 @@ spec:
           mountPath: /kaniko/.docker
           readOnly: true
 
-    -- name: kubectl
+    - name: kubectl
       image: alpine/k8s:1.30.3      
       command: ["tail","-f","/dev/null"]
       tty: true
