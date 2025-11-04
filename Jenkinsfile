@@ -1,7 +1,7 @@
 pipeline {
   agent {
     kubernetes {
-      inheritFrom 'maven-kaniko'   // 라벨 대신 이 옵션 사용
+      label 'maven-kaniko'
       defaultContainer 'maven'
       yaml """
 apiVersion: v1
@@ -17,7 +17,10 @@ spec:
       emptyDir: {}
     - name: docker-config
       secret:
-        secretName: regcred                  # <-- 기존 regcred 시크릿 재사용
+        secretName: regcred
+        items:                      # <-- .dockerconfigjson -> config.json 로 매핑
+          - key: .dockerconfigjson
+            path: config.json
   containers:
     - name: jnlp
       image: jenkins/inbound-agent:3341.v0766d82b_dec0-1
@@ -28,7 +31,7 @@ spec:
 
     - name: maven
       image: maven:3.9-eclipse-temurin-17
-      command: ["cat"]                       # keep-alive
+      command: ["cat"]
       tty: true
       workingDir: /home/jenkins/agent
       volumeMounts:
@@ -37,23 +40,22 @@ spec:
 
     - name: kaniko
       image: gcr.io/kaniko-project/executor:debug
-      command: ["cat"]                       # keep-alive
+      command: ["cat"]
       tty: true
       env:
         - name: DOCKER_CONFIG
-          value: /kaniko/.docker             # <-- Kaniko 기본 경로
+          value: /kaniko/.docker          # <-- Kaniko 기본 탐색 경로
       workingDir: /home/jenkins/agent
       volumeMounts:
         - name: workspace
           mountPath: /home/jenkins/agent
         - name: docker-config
-          mountPath: /kaniko/.docker/config.json  # <-- 파일로 바로 마운트
-          subPath: .dockerconfigjson              # <-- docker-registry 시크릿 키명
+          mountPath: /kaniko/.docker      # <-- 디렉터리로 마운트 (config.json 존재)
           readOnly: true
 
     - name: kubectl
       image: bitnami/kubectl:latest
-      command: ["sh","-c","sleep 365d"]
+      command: ["sleep","365d"]           # <-- 쉘 없이 직접 호출
       tty: true
       workingDir: /home/jenkins/agent
       volumeMounts:
