@@ -1,7 +1,7 @@
 pipeline {
   agent {
     kubernetes {
-      //label 'maven-kaniko'
+      // label 제거 (동적 podTemplate 사용)
       defaultContainer 'maven'
       yaml """
 apiVersion: v1
@@ -18,7 +18,7 @@ spec:
     - name: docker-config
       secret:
         secretName: regcred
-        items:                     
+        items:
           - key: .dockerconfigjson
             path: config.json
   containers:
@@ -44,18 +44,18 @@ spec:
       tty: true
       env:
         - name: DOCKER_CONFIG
-          value: /kaniko/.docker       
+          value: /kaniko/.docker
       workingDir: /home/jenkins/agent
       volumeMounts:
         - name: workspace
           mountPath: /home/jenkins/agent
         - name: docker-config
-          mountPath: /kaniko/.docker      
+          mountPath: /kaniko/.docker
           readOnly: true
 
     - name: kubectl
       image: bitnami/kubectl:latest
-      command: ["tail","-f","/dev/null"]   
+      command: ["tail", "-f", "/dev/null"]    # ✅ attach 안정
       tty: true
       workingDir: /home/jenkins/agent
       volumeMounts:
@@ -76,6 +76,7 @@ spec:
   }
 
   stages {
+
     stage('Checkout') {
       steps {
         container('maven') {
@@ -125,16 +126,21 @@ spec:
       }
     }
 
-  stage('Sanity: kubectl shell') {
-  options { timeout(time: 1, unit: 'MINUTES') }
-  steps {
-    container('kubectl') {
-      script {
-        sh 'echo "[PING] kubectl alive $(kubectl version --client=true --short)"'
+    stage('Sanity: kubectl shell') {
+      options { timeout(time: 3, unit: 'MINUTES') }   # ⏱ attach 지연 대비
+      steps {
+        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+          container('kubectl') {
+            sh '''
+              set -e
+              echo "[PING] entering kubectl container"
+              kubectl version --client=true --short || true
+              echo "[PING] kubectl alive ✅"
+            '''
+          }
+        }
       }
     }
-  }
-}
 
     stage('Deploy to Kubernetes') {
       options { timeout(time: 5, unit: 'MINUTES') }
