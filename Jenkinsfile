@@ -1,7 +1,6 @@
 pipeline {
   agent {
     kubernetes {
-      // label 제거 (동적 podTemplate 사용)
       defaultContainer 'maven'
       yaml """
 apiVersion: v1
@@ -54,7 +53,7 @@ spec:
           readOnly: true
 
     - name: kubectl
-      image: alpine/k8s:1.30.3      
+      image: alpine/k8s:1.30.3      # ✅ /bin/sh 내장 (attach 문제 해결)
       command: ["tail","-f","/dev/null"]
       tty: true
       workingDir: /home/jenkins/agent
@@ -127,7 +126,7 @@ spec:
     }
 
     stage('Sanity: kubectl shell') {
-      options { timeout(time: 3, unit: 'MINUTES') }  
+      options { timeout(time: 3, unit: 'MINUTES') }
       steps {
         catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
           container('kubectl') {
