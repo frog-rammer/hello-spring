@@ -53,9 +53,9 @@ spec:
           mountPath: /kaniko/.docker
           readOnly: true
 
-    - name: kubectl
-      image: bitnami/kubectl:latest
-      command: ["tail", "-f", "/dev/null"]    # ✅ attach 안정
+    -- name: kubectl
+      image: alpine/k8s:1.30.3      
+      command: ["tail","-f","/dev/null"]
       tty: true
       workingDir: /home/jenkins/agent
       volumeMounts:
