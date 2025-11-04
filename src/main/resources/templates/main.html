@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title th:text="${appName} + ' | Main'">Hello Spring | Main</title>
+  <style>
+    :root { --bg:#f7f8fa; --card:#ffffff; --primary:#0b5cff; --text:#1f2937; --muted:#6b7280; --ring:#e5e7eb; }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Pretendard, sans-serif}
+    .container{max-width:980px;margin:40px auto;padding:0 20px}
+    .nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+    .brand{font-weight:800;letter-spacing:.2px}
+    .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--ring);border-radius:999px;background:#fff}
+    .grid{display:grid;gap:16px;grid-template-columns:repeat(12,1fr)}
+    .card{grid-column:1/-1;background:var(--card);border:1px solid var(--ring);border-radius:16px;padding:28px}
+    @media(min-width:720px){ .card{grid-column:1/9} .side{grid-column:9/-1} }
+    h1{margin:0 0 8px;font-size:28px}
+    p.lead{margin:0 0 16px;color:var(--muted)}
+    .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    .btn{padding:10px 14px;border-radius:12px;border:1px solid var(--ring);background:#fff;text-decoration:none;color:var(--text)}
+    .btn.primary{background:var(--primary);color:#fff;border-color:transparent}
+    .stat{background:var(--card);border:1px solid var(--ring);border-radius:16px;padding:20px}
+    .kv{display:flex;justify-content:space-between;margin:6px 0;color:var(--muted)}
+    footer{margin:28px 0;color:var(--muted);font-size:12px}
+    code{background:#f3f4f6;border:1px solid var(--ring);border-radius:6px;padding:2px 6px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="brand" th:text="${appName}">Hello Spring</div>
+      <div class="chip">
+        <span>🕒</span>
+        <span th:text="${#temporals.format(now, 'yyyy-MM-dd HH:mm:ss z')}">2025-01-01 12:00:00 KST</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h1>메인 페이지</h1>
+        <p class="lead">스프링 부트 + Thymeleaf 기본 홈. 파이프라인 배포 확인용으로 깔끔하게 구성했어요.</p>
+        <div class="btns">
+          <a class="btn primary" href="/" >홈</a>
+          <a class="btn" href="/actuator/health">Actuator Health</a>
+          <a class="btn" href="/actuator/info">Actuator Info</a>
+          <a class="btn" href="https://github.com/frog-rammer/hello-spring" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </section>
+
+      <aside class="side stat">
+        <div class="kv"><span>포트</span><strong>7000</strong></div>
+        <div class="kv"><span>컨텍스트 경로</span><strong>/</strong></div>
+        <div class="kv"><span>이미지 태그</span>
+          <strong><code th:text="${#httpServletRequest.getHeader('X-Image-Tag')} ?: 'N/A'">N/A</code></strong>
+        </div>
+        <div class="kv"><span>노드포트</span><strong>30081</strong></div>
+      </aside>
+    </div>
+
+    <footer>© <span th:text="${#dates.year(#dates.createNow())}">2025</span> · Demo</footer>
+  </div>
+</body>
+</html>
