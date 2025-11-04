@@ -2,9 +2,9 @@ pipeline {
   agent { label 'maven-kaniko' }
 
   options {
-    timeout(time: 30, unit: 'MINUTES')   // 전체 파이프라인 상한
-    timestamps()                         // 타임스탬프 로그
-    skipDefaultCheckout(true)            // 기본 체크아웃 비활성화 (아래에서 명시적으로 실행)
+    timeout(time: 30, unit: 'MINUTES')
+    timestamps()
+    skipDefaultCheckout(true)    // 기본 체크아웃 비활성화 (아래에서 직접 수행)
   }
 
   environment {
@@ -16,6 +16,7 @@ pipeline {
     stage('Checkout') {
       steps {
         container('maven') {
+          // ✅ 이 컨테이너(=maven) 워크스페이스에 직접 체크아웃
           checkout scm
           sh '''
             set -e
@@ -61,14 +62,10 @@ pipeline {
                 echo "[DEBUG] Kaniko context check:"
                 echo "WORKSPACE=${WORKSPACE}"
                 ls -la "${WORKSPACE}"
-
-                # Dockerfile 존재 확인
                 test -f "${WORKSPACE}/Dockerfile" || { echo "[ERROR] Dockerfile not found at ${WORKSPACE}/Dockerfile"; exit 1; }
 
-                # kaniko용 쓰기 가능한 docker config 준비
                 mkdir -p "${DOCKER_CONFIG}"
 
-                # (선택) 파드에 마운트된 읽기전용 시크릿을 복사
                 if [ -f /kaniko/.docker/.dockerconfigjson ]; then
                   echo "[DEBUG] Copying docker auth to ${DOCKER_CONFIG}/config.json"
                   cp /kaniko/.docker/.dockerconfigjson "${DOCKER_CONFIG}/config.json"
@@ -105,7 +102,7 @@ pipeline {
     }
 
     stage('Deploy to Kubernetes') {
-      options { timeout(time: 5, unit: 'MINUTES') }  // 무한대기 방지
+      options { timeout(time: 5, unit: 'MINUTES') }
       steps {
         container('kubectl') {
           sh """
@@ -117,7 +114,6 @@ pipeline {
             kubectl get ns || true
 
             echo "[APPLY] Set image on Deployment"
-            # 컨테이너 이름 'app'이 Deployment 내 컨테이너 이름과 일치해야 함
             kubectl -n app-spring set image deploy/hello-spring app=${env.IMAGE}
 
             echo "[WAIT] Rollout status (with timeout)"
