@@ -16,7 +16,8 @@ spec:
     - name: workspace
       emptyDir: {}
     - name: docker-config
-      emptyDir: {}
+      secret:
+        secretName: regcred                  # <-- 기존 regcred 시크릿 재사용
   containers:
     - name: jnlp
       image: jenkins/inbound-agent:3341.v0766d82b_dec0-1
@@ -27,7 +28,7 @@ spec:
 
     - name: maven
       image: maven:3.9-eclipse-temurin-17
-      command: ["cat"]                # keep-alive
+      command: ["cat"]                       # keep-alive
       tty: true
       workingDir: /home/jenkins/agent
       volumeMounts:
@@ -36,20 +37,22 @@ spec:
 
     - name: kaniko
       image: gcr.io/kaniko-project/executor:debug
-      command: ["cat"]                # keep-alive
+      command: ["cat"]                       # keep-alive
       tty: true
       env:
         - name: DOCKER_CONFIG
-          value: /workspace/.docker
+          value: /kaniko/.docker             # <-- Kaniko 기본 경로
       workingDir: /home/jenkins/agent
       volumeMounts:
         - name: workspace
           mountPath: /home/jenkins/agent
         - name: docker-config
-          mountPath: /workspace/.docker
+          mountPath: /kaniko/.docker/config.json  # <-- 파일로 바로 마운트
+          subPath: .dockerconfigjson              # <-- docker-registry 시크릿 키명
+          readOnly: true
 
     - name: kubectl
-      image: bitnami/kubectl:latest   # 지금 잘 됐던 latest로 복구
+      image: bitnami/kubectl:latest
       command: ["sh","-c","sleep 365d"]
       tty: true
       workingDir: /home/jenkins/agent
@@ -71,7 +74,6 @@ spec:
   }
 
   stages {
-    // ⬇️ 아래는 지금 쓰시던 Checkout/Build/Kaniko/Sanity/Deploy 스테이지 그대로 유지
     stage('Checkout') {
       steps {
         container('maven') {
@@ -107,22 +109,15 @@ spec:
     stage('Build & Push Docker Image') {
       steps {
         container('kaniko') {
-          withEnv(['DOCKER_CONFIG=/workspace/.docker']) {
-            retry(2) {
-              sh '''
-                set -euo pipefail
-                mkdir -p "${DOCKER_CONFIG}"
-                if [ -f /kaniko/.docker/.dockerconfigjson ]; then
-                  cp /kaniko/.docker/.dockerconfigjson "${DOCKER_CONFIG}/config.json"
-                fi
-                /kaniko/executor \
-                  --context="${WORKSPACE}" \
-                  --dockerfile="${WORKSPACE}/Dockerfile" \
-                  --destination="${IMAGE}" \
-                  --build-arg JAR_FILE=$(ls target/*.jar | head -n1) \
-                  --skip-tls-verify
-              '''
-            }
+          retry(2) {
+            sh '''
+              set -euo pipefail
+              /kaniko/executor \
+                --context="${WORKSPACE}" \
+                --dockerfile="${WORKSPACE}/Dockerfile" \
+                --destination="${IMAGE}" \
+                --build-arg JAR_FILE=$(ls target/*.jar | head -n1)
+            '''
           }
         }
       }
